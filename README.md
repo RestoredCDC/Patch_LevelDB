@@ -1,101 +1,119 @@
-# Patch_LevelDB
+# 🌺 RestoredCDC LevelDB Patch Tool
 
-A transparent patching and correction layer for an immutable LevelDB dataset—designed for RestoredCDC or similar archival projects.
-
----
-
-## ✨ Overview
-This project allows you to preserve the original LevelDB dataset (the "base crawl") and layer on top of it a second LevelDB ("patch DB") containing only corrections or additions.
-
-- No modifications are made to the original dataset.
-- All changes are logged in a structured, auditable format.
-- Ideal for correcting broken links, missing images, or inserting disclaimers.
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-pytest-green)](#-running-tests)
+[![Lint](https://img.shields.io/badge/lint-flake8%20%7C%20black%20%7C%20isort-blue)](#-linting--formatting)
 
 ---
 
-## 🌐 Architecture
-
-```
-+--------------------------+
-|   Patch LevelDB         |  ← Check here first
-+--------------------------+
-           |
-           v
-+--------------------------+
-|   Base (Original) DB    |  ← Fallback if not patched
-+--------------------------+
-```
-
-Handled via the `LayeredDB` class in `layered_db.py`.
+A command-line tool for **patching, auditing**, and **managing LevelDB content**, designed for the RestoredCDC project.
 
 ---
 
-## 🚀 Quickstart
+## ✨ Features
 
-### 1. Clone & Install
+✅ Supports **add**, **replace**, and **remove** operations  
+✅ Handles both **text** and **binary** content  
+✅ Automatic **audit logging** (JSON Lines)  
+✅ Exports audit log as a simple **HTML report**  
+✅ Tracks **MD5 checksums** for every patch  
+✅ Patch **reason** and optional **MIME type** tracking  
+✅ Includes unit tests via `pytest`
+
+---
+
+## 📦 Requirements
+
+| Package    | Purpose          |
+|------------|------------------|
+| `plyvel`   | LevelDB bindings |
+| `pytest`   | Testing          |
+| `flake8`   | Linting          |
+| `black`    | Code formatting  |
+| `isort`    | Import sorting   |
+| `flask` + `waitress` | Optional: serve patched content |
+
+---
+
+## 🛠 Installation
+
 ```bash
-git clone git@github.com:RestoredCDC/Patch_LevelDB.git
-cd Patch_LevelDB
-python3 -m venv venv
-source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Apply a Patch
+Or manually:
+
 ```bash
-python patch_tool.py patches/patchdb \
-  /cdc/pages/about/index.html \
-  banner.html \
-  "Added disclaimer banner to about page"
-```
-
-- This will insert the contents of `banner.html` as the new value for that key.
-- It will also append an entry to `audit/patch_log.jsonl`.
-
----
-
-## 📒 Audit Logging
-Every patch is recorded as a JSON line in `audit/patch_log.jsonl`. Example:
-
-```json
-{
-  "key": "/cdc/pages/about/index.html",
-  "action": "added_or_modified",
-  "patch_digest": "a925c44f92a071e92868f8cb8e17d020",
-  "reason": "Added disclaimer banner",
-  "timestamp": "2025-03-27T15:32:10Z",
-  "author": "restoredcdc-bot"
-}
+pip install plyvel flask waitress pytest flake8 black isort
 ```
 
 ---
 
-## 📊 File Structure
+## 🚦 Usage
 
+### Apply a text patch
+```bash
+python cli.py apply-text --db path/to/patchdb --key mykey \
+    --reason "Updated disclaimer text" --file disclaimer.txt \
+    --mimetype text/plain
 ```
-Patch_LevelDB/
-├── layered_db.py         # Read logic for base + patch fallback
-├── patch_tool.py         # CLI to add patches and log them
-├── audit/
-│   └── patch_log.jsonl  # JSONL-formatted audit trail
-├── patches/              # Patch DB lives here
-├── tests/                # Test coverage
-├── requirements.txt
-└── README.md
+
+### Apply a binary patch
+```bash
+python cli.py add-binary --db path/to/patchdb --key logo \
+    --reason "Updated logo" --file logo.png \
+    --mimetype image/png
+```
+
+### Remove a patch (mode auto-detected)
+```bash
+python cli.py remove-patch --db path/to/patchdb --key oldfile --reason "Obsolete"
+```
+
+### List patches in the audit log
+```bash
+python cli.py list-patches
+```
+
+### Export audit log to HTML
+```bash
+python cli.py export-audit-html --output audit.html
 ```
 
 ---
 
-## 📈 Future Plans
-- Add `--dry-run` and `--diff` preview to `patch_tool.py`
-- Patch validator (check if key exists in base or is referenced)
-- Merge script (optional: bake patches into new unified DB)
+## ✅ Running Tests
+
+```bash
+pytest tests/
+```
 
 ---
 
-## 🙏 Credits
-Developed by and for the [RestoredCDC](https://github.com/RestoredCDC) project.
+## 🪑 Linting & Formatting
 
-Contributions and forks welcome!
+```bash
+flake8
+black patchlib.py cli.py tests/
+isort patchlib.py cli.py tests/
+```
 
+---
+
+## 📝 Notes
+
+- The default audit log is located at `audit/patch_log.jsonl`.
+- `remove-patch` automatically detects whether the content is text or binary.
+- This tool is meant to manage **content patches**, not full database snapshots.
+- For serving content from patched databases, see `serve.py`.
+
+---
+
+## 👷 Optional Improvements
+
+If you're using this tool in production:
+- Consider setting up a `Makefile`
+- Enable `pre-commit` hooks for linting
+- Auto-export audits during CI/CD
 
